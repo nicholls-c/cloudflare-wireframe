@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      - id: tofu-fmt-src
+        name: OpenTofu format check (src/)
+        entry: tofu
+        args: [fmt, -check, -recursive, -diff]
+        language: system
+        files: ^src/.*\.tf$
+        pass_filenames: false
+        always_run: false
+        
+      - id: tofu-fmt-environments
+        name: OpenTofu format check (environments/)
+        entry: tofu
+        args: [fmt, -check, -recursive, -diff]
+        language: system
+        files: ^catalogue/.*\.(tf|tfvars)$
+        pass_filenames: false
+        always_run: false
