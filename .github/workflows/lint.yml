@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  TOFU_VERSION: 1.13.3
+
+jobs:
+  linting:
+    name: Terraform Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@fe38bfbb36d6c5a1f3f64ef96bba7f30dfe0f038
+      with:
+        terraform_version: ${{ env.TOFU_VERSION }}
+
+    - name: Check Root Module
+      run: |
+        terraform fmt -check -recursive ./src
+
+    - name: Check Configs
+      run: |
+        terraform fmt -check -recursive ./catalogue
