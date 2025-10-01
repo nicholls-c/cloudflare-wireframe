@@ -1,0 +1,4 @@
+# this file describes inputs for backend
+bucket="my_r2_bucket"
+key="zone_cerberus.tfstate"
+region=auto
