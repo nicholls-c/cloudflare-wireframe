@@ -1,0 +1,68 @@
+parameters:
+- name: zone
+  type: string
+  displayName: 'Target Environment'
+- name: tofuVersion
+  type: string
+  displayName: 'Tofu Version'
+  default: '1.13.3'
+- name: workingDirectory
+  type: string
+  displayName: 'Terraform Working Directory'
+  default: 'src/'
+
+jobs:
+- job: TerraformPlan
+  displayName: 'Terraform Plan - ${{ upper(parameters.zone) }}'
+  pool:
+    name: ubuntu-latest
+  variables:
+  - group: ${{ parameters.variableGroup }}
+  steps:
+  - checkout: self
+    clean: true
+
+  - task: CmdLine@2
+    displayName: 'Terraform Init'
+    inputs:
+      script: |
+        terraform -chdir=${{ parameters.workingDirectory }} init \
+        -reconfigure \
+        -upgrade \
+        -backend-config=../catalogue/${{ parameters.zone }}/${{ parameters.zone }}.backend
+    env:
+      CLOUDFLARE_API_TOKEN: $(CLOUDFLARE_API_TOKEN)
+
+  - task: CmdLine@2
+    displayName: 'Build Terraform Var Files'
+    name: buildVarFiles
+    inputs:
+      script: |
+        VAR_FILES=""
+        for file in $(find catalogue/${{ parameters.zone }} -iname "*.tfvars"); do
+          if [ -f "$file" ]; then
+            VAR_FILES="${VAR_FILES} -var-file=$(realpath "$file")"
+          fi
+        done
+        echo "##vso[task.setvariable variable=varFiles;isOutput=true]${VAR_FILES}"
+
+  - task: CmdLine@2
+    displayName: 'Terraform Plan: ${{ upper(parameters.zone) }}'
+    name: terraformPlan
+    inputs:
+      script: |
+        terraform \
+        -chdir=${{ parameters.workingDirectory }} \
+        plan \
+        -var-file="$(find catalogue/ -name constants.tfvars -exec realpath {} \;)" \
+        $(buildVarFiles.varFiles) \
+        -out="${{ parameters.zone }}-plan.tfplan"
+    env:
+      CLOUDFLARE_API_TOKEN: $(CLOUDFLARE_API_TOKEN)
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Plan File'
+    inputs:
+      targetPath: '${{ parameters.workingDirectory }}${{ parameters.zone }}-plan.tfplan'
+      artifact: 'terraform-plan-${{ parameters.zone }}'
+      publishLocation: 'pipeline'

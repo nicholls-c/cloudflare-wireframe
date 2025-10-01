@@ -1,0 +1,57 @@
+parameters:
+- name: zone
+  type: string
+  displayName: 'Target Environment'
+- name: tofuVersion
+  type: string
+  displayName: 'Tofu Version'
+  default: '1.13.3'
+- name: workingDirectory
+  type: string
+  displayName: 'Terraform Working Directory'
+  default: 'src/'
+
+jobs:
+- deployment: TerraformApply
+  displayName: 'Terraform Apply - ${{ upper(parameters.zone) }}'
+  ${{ if ne(parameters.dependsOn, '') }}:
+    dependsOn: ${{ parameters.dependsOn }}
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  pool:
+    name: ubuntu-latest
+  variables:
+  - group: ${{ parameters.variableGroup }}
+  zone: ${{ parameters.zone }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self
+          clean: true
+
+        - task: DownloadPipelineArtifact@2
+          displayName: 'Download Terraform Plan File'
+          inputs:
+            buildType: 'current'
+            artifactName: 'terraform-plan-${{ parameters.zone }}'
+            targetPath: '${{ parameters.workingDirectory }}'
+
+        - task: CmdLine@2
+          displayName: 'Terraform Init'
+          inputs:
+            script: |
+              terraform -chdir=${{ parameters.workingDirectory }} init \
+              -reconfigure \
+              -upgrade \
+              -backend-config=../catalogue/${{ parameters.zone }}/${{ parameters.zone }}.backend
+          env:
+            CLOUDFLARE_API_TOKEN: $(CLOUDFLARE_API_TOKEN)
+
+        - task: CmdLine@2
+          displayName: 'Terraform Apply - ${{ upper(parameters.zone) }}'
+          name: terraformApply
+          inputs:
+            script: |
+              terraform -chdir=${{ parameters.workingDirectory }} apply "${{ parameters.zone }}-plan.tfplan"
+          env:
+            ARM_CLIENT_ID: $(ARM_CLIENT_ID)

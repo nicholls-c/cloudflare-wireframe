@@ -1,0 +1,56 @@
+name: 'Terraform Plan && Apply'
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/**
+      - environments/**
+      - modules/**
+
+pr:
+  branches:
+    include:
+      # trigger for PRs to main branch
+      - main
+  paths:
+    include:
+      - src/**
+      - catalogue/**
+
+parameters:
+  - name: zone
+    type: string
+    default: 'cf_test'
+  - name: tofuVersion
+    type: string
+    default: '1.13.3'
+
+resources:
+  repositories:
+  - repository: self
+    type: GitHub
+    endpoint: GithubOrg
+    name: <GithubOrg>/<RepoName>
+    ref: refs/heads/main
+
+stages:
+- stage: TerraformPlan
+  displayName: 'Terraform Plan'
+  jobs:
+  - template: templates/terraform-plan.yml
+    parameters:
+      tofuVersion: ${{ parameters.tofuVersion }}
+      workingDirectory: 'src/'
+
+- stage: TerraformApply
+  displayName: 'Terraform Apply'
+  dependsOn: TerraformPlan
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - template: templates/terraform-apply.yml
+    parameters:
+      tofuVersion: ${{ parameters.tofuVersion }}
+      workingDirectory: 'src/'
