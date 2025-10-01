@@ -5,10 +5,10 @@ records = {
     value = "<IP_ADDRESS>"
     ttl   = 60
   }
-  api = {
-    name    = "api.raystaxidermy.com"
-    type    = "CNAME"
-    value   = "lb.cerberus.io"
-    proxied = true
+  www = {
+    name  = "www.raystaxidermy.com"
+    type  = "CNAME"
+    value = "raystaxidermy.com"
+    ttl   = 60
   }
 }
